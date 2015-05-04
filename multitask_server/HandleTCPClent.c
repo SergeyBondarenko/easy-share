@@ -7,7 +7,7 @@ void HandleTCPClient(int clntSock)
 	char buffer[RCVBUFSIZE];
 	int recvMsgSize;
 
-	sleep(30);	
+	//sleep(30);	
 
 	// Receive message from client
 	if((recvMsgSize = recv(clntSock, buffer, RCVBUFSIZE, 0)) < 0)
