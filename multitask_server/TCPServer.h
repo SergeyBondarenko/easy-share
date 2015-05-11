@@ -7,5 +7,6 @@
 
 void DieWitError(char *errMSG);						// Error handling function
 void HandleTCPClient(int clntSocket);				// TCP client handling 
+void HandleTCPClientFull(int clntSocket);				// TCP client handling 
 int CreateTCPServerSocket(unsigned short port);	// Create TCP server socket 
 int AcceptTCPConnection(int servSock);				// Accept TCP connection req
