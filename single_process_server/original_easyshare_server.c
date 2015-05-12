@@ -5,8 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define RCVBUFSIZE 62
-#define OUTBUFSIZE 62
+#define RCVBUFSIZE 32
 #define MAXPENDING 5			// Max outstanding connection requests
 
 void DieWithError(char *errMsg);			// Error handling function
@@ -65,53 +64,28 @@ int main(int argc, char *argv[])
 
 void DieWithError(char *errMsg)			// Error handling function
 {
-	printf("%s\n", errMsg);
+	printf(errMsg);
 	exit(1);
 }
 
 void HandleTCPClient(int clntSocket)	// TCP client handling func
 {
-	char echoBuffer[RCVBUFSIZE], outBuffer[OUTBUFSIZE];
-	int i, recvMsgSize, sendMsgSize;
-	char cmd_list[] = "list";
-	char cmd_date[] = "date";
-	char exmp_list[] = "Example list: a.out  cstyle_str  cstyle_str.c  cstyle_str.cpp  string_class  string_class.cpp";
-	char exmp_date[] = "Example date: Tue May 12 09:15:00 CEST 2015";
-
-	// Clean buffer before saving data into
-	for(i = 0; i < RCVBUFSIZE; i++)
-		outBuffer[i] = 0;
+	char echoBuffer[RCVBUFSIZE];
+	int recvMsgSize;
 
 	// Receive message from client
 	if((recvMsgSize = recv(clntSocket, echoBuffer, RCVBUFSIZE, 0)) < 0)
 		DieWithError("recv() failed!");
-	
-	// Match commands and fill buffer with output
-	if(strcmp(echoBuffer, cmd_list) == 0){
-		printf("%s\n", exmp_list);
-		strcpy(outBuffer, exmp_list);
-	} else if(strcmp(echoBuffer, cmd_date) == 0){
-		printf("%s\n", exmp_date);
-		strcpy(outBuffer, exmp_date);
-	} else {
-		printf("%s\n", echoBuffer);
-		strcpy(outBuffer, echoBuffer);
-	}
-
-	sendMsgSize = strlen(outBuffer);
 
 	// Send received string and receive again until end of transmission
 	while(recvMsgSize > 0){					// 0 - end of transmission
-	//while(sendMsgSize > 0){					// 0 - end of transmission
 		// Echo message back to the client
 		if(send(clntSocket, echoBuffer, recvMsgSize, 0) != recvMsgSize)
-		//if(send(clntSocket, echoBuffer, sendMsgSize, 0) != sendMsgSize)
 			DieWithError("send() failed!");
 
 		// See if there is more data to receive
-		//recvMsgSize = 0;
 		if((recvMsgSize = recv(clntSocket, echoBuffer, RCVBUFSIZE, 0)) < 0)
-			DieWithError("recv2() failed!");
+			DieWithError("recv() failed!");
 	}
 
 	close(clntSocket);
