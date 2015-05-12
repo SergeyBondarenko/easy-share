@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <dirent.h>
 
 #define RCVBUFSIZE 255
 #define OUTBUFSIZE 255
@@ -12,7 +13,7 @@
 
 void DieWithError(char *errMsg);			// Error handling function
 void HandleTCPClient(int clntSocket);	// TCP client handling func
-//char GetLocalTime(void);
+char *GetLocalTime(void);
 
 int main(int argc, char *argv[])
 {
@@ -70,13 +71,15 @@ void DieWithError(char *errMsg)			// Error handling function
 	printf("%s\n", errMsg);
 	exit(1);
 }
-/*
-char GetLocalTime(void)
+
+char *GetLocalTime(void)
 {
-	time_t t = time(0);
-	return ctime(&t);
+	time_t nowtime = time(&nowtime);
+	char* dt = ctime(&nowtime);
+	//dt[strlen(dt)] = "\0";
+	return dt;
 }
-*/
+
 void HandleTCPClient(int clntSocket)	// TCP client handling func
 {
 	char echoBuffer[RCVBUFSIZE], outBuffer[OUTBUFSIZE];
@@ -85,6 +88,7 @@ void HandleTCPClient(int clntSocket)	// TCP client handling func
 	char cmd_date[] = "date";
 	char exmp_list[] = "Example list: a.out  cstyle_str  cstyle_str.c  cstyle_str.cpp  string_class  string_class.cpp";
 	char exmp_date[] = "Example date: Tue May 12 09:15:00 CEST 2015";
+	//char nowtime[] = "date";
 
 	// Clean buffers before saving data into
 	for(i = 0; i < RCVBUFSIZE; i++){
@@ -98,13 +102,23 @@ void HandleTCPClient(int clntSocket)	// TCP client handling func
 	
 	// Match commands and fill buffer with output
 	if(strcmp(echoBuffer, cmd_list) == 0){
-		printf("%s\n", exmp_list);
-		strcpy(outBuffer, exmp_list);
+		//printf("%s\n", exmp_list);
+		//strcpy(outBuffer, exmp_list);
+		DIR *d;
+		struct dirent *dir;
+		d = opendir(".");
+		if(d){
+				strcat(outBuffer, "\n");
+			while((dir = readdir(d)) != NULL){
+				printf("%s\n", dir->d_name);
+				strcat(outBuffer, dir->d_name);
+				strcat(outBuffer, "\n");
+			}
+			closedir(d);
+		}
 	} else if(strcmp(echoBuffer, cmd_date) == 0){
-		printf("%s\n", exmp_date);
-		time_t nowtime = time(NULL);
-		printf("%s\n", ctime(&nowtime));
-		strcpy(outBuffer, ctime(&nowtime));
+		printf("%s\n", GetLocalTime());
+		strcpy(outBuffer, GetLocalTime());
 	} else {
 		printf("%s\n", echoBuffer);
 		strcpy(outBuffer, "else");
