@@ -14,6 +14,7 @@
 void DieWithError(char *errMsg);			// Error handling function
 void HandleTCPClient(int clntSocket);	// TCP client handling func
 char *GetLocalTime(void);
+char *DispFolderCont(char *buffer);
 
 int main(int argc, char *argv[])
 {
@@ -80,6 +81,23 @@ char *GetLocalTime(void)
 	return dt;
 }
 
+char *DispFolderCont(char *buffer)
+{
+	DIR *d;
+	struct dirent *dir;
+	d = opendir("/");
+	if(d){
+		strcat(buffer, "\n");
+		while((dir = readdir(d)) != NULL){
+			//printf("%s\n", dir->d_name);
+			strcat(buffer, dir->d_name);
+			strcat(buffer, "\n");
+		}
+		closedir(d);
+	}
+	return buffer;
+}
+
 void HandleTCPClient(int clntSocket)	// TCP client handling func
 {
 	char echoBuffer[RCVBUFSIZE], outBuffer[OUTBUFSIZE];
@@ -104,18 +122,19 @@ void HandleTCPClient(int clntSocket)	// TCP client handling func
 	if(strcmp(echoBuffer, cmd_list) == 0){
 		//printf("%s\n", exmp_list);
 		//strcpy(outBuffer, exmp_list);
-		DIR *d;
+		/*DIR *d;
 		struct dirent *dir;
 		d = opendir(".");
 		if(d){
-				strcat(outBuffer, "\n");
+			strcat(outBuffer, "\n");
 			while((dir = readdir(d)) != NULL){
 				printf("%s\n", dir->d_name);
 				strcat(outBuffer, dir->d_name);
 				strcat(outBuffer, "\n");
 			}
 			closedir(d);
-		}
+		}*/
+		printf("%s\n", DispFolderCont(outBuffer));
 	} else if(strcmp(echoBuffer, cmd_date) == 0){
 		printf("%s\n", GetLocalTime());
 		strcpy(outBuffer, GetLocalTime());
