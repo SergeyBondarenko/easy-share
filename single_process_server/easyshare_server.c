@@ -120,20 +120,6 @@ void HandleTCPClient(int clntSocket)	// TCP client handling func
 	
 	// Match commands and fill buffer with output
 	if(strcmp(echoBuffer, cmd_list) == 0){
-		//printf("%s\n", exmp_list);
-		//strcpy(outBuffer, exmp_list);
-		/*DIR *d;
-		struct dirent *dir;
-		d = opendir(".");
-		if(d){
-			strcat(outBuffer, "\n");
-			while((dir = readdir(d)) != NULL){
-				printf("%s\n", dir->d_name);
-				strcat(outBuffer, dir->d_name);
-				strcat(outBuffer, "\n");
-			}
-			closedir(d);
-		}*/
 		printf("%s\n", DispFolderCont(outBuffer));
 	} else if(strcmp(echoBuffer, cmd_date) == 0){
 		printf("%s\n", GetLocalTime());
