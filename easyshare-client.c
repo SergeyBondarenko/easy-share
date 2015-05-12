@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define RCVBUFSIZE 62 // Size of receive buffer
+#define RCVBUFSIZE 255 // Size of receive buffer
 
 void DieWithError(char *errorMessage); // Error handling function
 
