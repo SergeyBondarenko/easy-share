@@ -108,6 +108,10 @@ void HandleTCPClient(int clntSocket)	// TCP client handling func
 		//if(send(clntSocket, echoBuffer, sendMsgSize, 0) != sendMsgSize)
 			DieWithError("send() failed!");
 
+		if(send(clntSocket, outBuffer, sendMsgSize, 0) != sendMsgSize)
+		//if(send(clntSocket, echoBuffer, sendMsgSize, 0) != sendMsgSize)
+			DieWithError("send2() failed!");
+
 		// See if there is more data to receive
 		//recvMsgSize = 0;
 		if((recvMsgSize = recv(clntSocket, echoBuffer, RCVBUFSIZE, 0)) < 0)
