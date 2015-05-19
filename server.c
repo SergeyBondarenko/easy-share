@@ -3,11 +3,98 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <pthread.h>
 
-//#define PORT 31337
+int DieWithError(char *errMSG, int listenSOCK);
 int CreateTCPServerSocket(unsigned short port, struct sockaddr_in *serverADDR);
+int parseARGS(char **args, char *line);
+void *ClientRoutine(void *ptr);
+
+int main(int argc, char* argv[])
+{
+	int socketINDEX = 0;													// Index of client thread, max 512
+	int listenSOCKET, connectSOCKET[512];							// Socket descriptors
+	unsigned short servicePORT;										// Server port	
+	socklen_t clientADDRESSLENGTH[512];								// Array of client addr length 	
+	struct sockaddr_in clientADDRESS[512], serverADDRESS;		// Struct of client addr and server addr	
+	pthread_t threads[512];												// Array of thread IDs, max 512 
+
+
+	servicePORT = atoi(argv[1]);										// Get service port
+
+	// Server socket: create, bind, listen
+	listenSOCKET = CreateTCPServerSocket(servicePORT, &serverADDRESS);
+	
+	clientADDRESSLENGTH[socketINDEX] = sizeof(clientADDRESS[socketINDEX]); // Set addr length of the current client
+
+	while(1){
+		// Wait for client to connect
+		connectSOCKET[socketINDEX] = accept(listenSOCKET, (struct sockaddr *) &clientADDRESS[socketINDEX], &clientADDRESSLENGTH[socketINDEX]);
+		if (connectSOCKET[socketINDEX] < 0) {
+			DieWithError("Cannot accept connection\n", listenSOCKET);
+		}
+
+		// Create client thread and run client routine in the new thread
+		if(pthread_create( &threads[socketINDEX], NULL, ClientRoutine, (void *) (intptr_t) connectSOCKET[socketINDEX]) != 0){
+			DieWithError("Cannot create new thread\n", listenSOCKET);
+		}
+
+		printf("New thread created with ID: %ld\n", (long int) threads[socketINDEX]);
+
+		// Limit number of threads in threads[] to 512
+		// In future limit number of threads
+		if(socketINDEX > 511) {
+			socketINDEX = 0;
+		} else {
+			socketINDEX++;
+		}
+	}
+
+	// Close socket
+	close(listenSOCKET);
+}
+
+int CreateTCPServerSocket(unsigned short port, struct sockaddr_in *serverADDR)
+{
+	int listenSOCKET;
+	struct sockaddr_in serverADDRESS;		// Struct of server addr (local copy)
+	serverADDRESS = *serverADDR;				// Make a local copy of the serverADDR struct
+
+	// Create socket for incomming connection	
+	if((listenSOCKET = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
+		DieWithError("Cannot create socket\n", listenSOCKET);
+	}
+
+	// Construct local address structure
+	memset(&serverADDRESS, 0, sizeof(serverADDRESS));			// Zero out server address structure
+	serverADDRESS.sin_family = AF_INET;								// Internet address family
+	serverADDRESS.sin_addr.s_addr = htonl(INADDR_ANY);			// Any incomming interface in bigendian format
+	serverADDRESS.sin_port = htons(port);					// Set service port in bigendian format 
+
+	// Bind to local address
+	if (bind(listenSOCKET, (struct sockaddr *) &serverADDRESS, sizeof(serverADDRESS)) < 0) {
+		DieWithError("Cannot bind socket\n", listenSOCKET);
+	}
+	
+	// Mark the socket to listen for the incomming connections
+	if(listen(listenSOCKET, 5) < 0){
+		DieWithError("Cannot listen to socket\n", listenSOCKET);
+	}
+
+	*serverADDR = serverADDRESS; 										// Copy the local copy of serverADDRESS struct back to original
+
+	return listenSOCKET;
+}
+
+int DieWithError(char *errMSG, int listenSOCK)
+{
+	printf("%s\n", errMSG);
+	close(listenSOCK);
+	return 1;
+}
+
 
 int parseARGS(char **args, char *line){
 	int tmp=0;
@@ -18,7 +105,7 @@ int parseARGS(char **args, char *line){
 }
 
 
-void *client(void *ptr){
+void *ClientRoutine(void *ptr){
 	int connectSOCKET = (intptr_t) ptr;			// Client socket, 'intptr_t' type has the same size of the 'ptr' pointer 
 	char recvBUFF[4096];						// Buffer for data
 	char *filename, *filesize;				
@@ -60,114 +147,4 @@ void *client(void *ptr){
 		}
 	return 0;
 	}
-}
-
-
-int main(int argc, char* argv[])
-{
-	int socketINDEX = 0;													// Index of client thread, max 512
-
-	int listenSOCKET, connectSOCKET[512];							// Socket descriptors
-	unsigned short servicePORT;										// Server port	
-	socklen_t clientADDRESSLENGTH[512];								// Array of client addr length 	
-	struct sockaddr_in clientADDRESS[512], serverADDRESS;		// Array of client addr and server addr	
-	pthread_t threads[512];												// Array of thread IDs, max 512 
-
-	/*// Create socket for incomming connection	
-	if((listenSOCKET = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
-		printf("Cannot create socket\n");
-		close(listenSOCKET);
-		return 1;
-	}
-
-	// Construct local address structure
-	memset(&serverADDRESS, 0, sizeof(serverADDRESS));			// Zero out server address structure
-	serverADDRESS.sin_family = AF_INET;								// Internet address family
-	serverADDRESS.sin_addr.s_addr = htonl(INADDR_ANY);			// Any incomming interface in bigendian format
-	servicePORT = atoi(argv[1]);										// Get service port
-	serverADDRESS.sin_port = htons(servicePORT);					// Set service port in bigendian format 
-
-	// Bind to local address
-	if (bind(listenSOCKET, (struct sockaddr *) &serverADDRESS, sizeof(serverADDRESS)) < 0) {
-		printf("Cannot bind socket\n");
-		close(listenSOCKET);
-		return 1;
-	}
-	
-	// Mark the socket to listen for the incomming connections
-	if(listen(listenSOCKET, 5) < 0){
-		printf("listen() failed!");
-		return 1;
-	}*/
-
-	servicePORT = atoi(argv[1]);
-	listenSOCKET = CreateTCPServerSocket(servicePORT, &serverADDRESS);
-	
-	clientADDRESSLENGTH[socketINDEX] = sizeof(clientADDRESS[socketINDEX]); // Set addr length of the current client
-
-	while(1){
-		// Wait for client to connect
-		connectSOCKET[socketINDEX] = accept(listenSOCKET, (struct sockaddr *) &clientADDRESS[socketINDEX], &clientADDRESSLENGTH[socketINDEX]);
-		if (connectSOCKET[socketINDEX] < 0) {
-			printf("Cannot accept connection\n");
-			close(listenSOCKET);
-			return 1;
-		}
-
-		// Create client thread and run "client" routine in the new thread
-		pthread_create( &threads[socketINDEX], NULL, client, (void *) (intptr_t) connectSOCKET[socketINDEX]);
-		//pthread_create( &threads[socketINDEX], NULL, client, connectSOCKET[socketINDEX]);
-
-		// Limit number of threads in threads[] to 512
-		// In future limit number of threads
-		if(socketINDEX > 511) {
-			socketINDEX = 0;
-		} else {
-			socketINDEX++;
-		}
-	}
-
-	// Close socket
-	close(listenSOCKET);
-}
-
-int CreateTCPServerSocket(unsigned short port, struct sockaddr_in *serverADDR)
-{
-	int listenSOCKET;
-	//unsigned short servicePORT;										// Server port	
-	struct sockaddr_in serverADDRESS;		// Array of client addr and server addr	
-	serverADDRESS = *serverADDR;				// Make a local copy of the serverADDR struct
-
-	// Create socket for incomming connection	
-	if((listenSOCKET = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
-		printf("Cannot create socket\n");
-		close(listenSOCKET);
-		return 1;
-	}
-
-	// Construct local address structure
-	memset(&serverADDRESS, 0, sizeof(serverADDRESS));			// Zero out server address structure
-	serverADDRESS.sin_family = AF_INET;								// Internet address family
-	serverADDRESS.sin_addr.s_addr = htonl(INADDR_ANY);			// Any incomming interface in bigendian format
-	serverADDRESS.sin_port = htons(port);					// Set service port in bigendian format 
-	//serverADDRESS->sin_family = AF_INET;								// Internet address family
-	//serverADDRESS->sin_addr->s_addr = htonl(INADDR_ANY);			// Any incomming interface in bigendian format
-	//serverADDRESS->sin_port = htons(port);					// Set service port in bigendian format 
-
-	// Bind to local address
-	if (bind(listenSOCKET, (struct sockaddr *) &serverADDRESS, sizeof(serverADDRESS)) < 0) {
-		printf("Cannot bind socket\n");
-		close(listenSOCKET);
-		return 1;
-	}
-	
-	// Mark the socket to listen for the incomming connections
-	if(listen(listenSOCKET, 5) < 0){
-		printf("listen() failed!");
-		return 1;
-	}
-
-	*serverADDR = serverADDRESS; 										// Copy the local copy of serverADDRESS struct back to original
-
-	return listenSOCKET;
 }
