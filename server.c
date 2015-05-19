@@ -7,7 +7,7 @@
 #include <pthread.h>
 
 //#define PORT 31337
-//int CreateTCPServerSocket(unsigned short port, struct sockaddr_in serverADDRESS);
+int CreateTCPServerSocket(unsigned short port, struct sockaddr_in *serverADDR);
 
 int parseARGS(char **args, char *line){
 	int tmp=0;
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 	struct sockaddr_in clientADDRESS[512], serverADDRESS;		// Array of client addr and server addr	
 	pthread_t threads[512];												// Array of thread IDs, max 512 
 
-	// Create socket for incomming connection	
+	/*// Create socket for incomming connection	
 	if((listenSOCKET = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
 		printf("Cannot create socket\n");
 		close(listenSOCKET);
@@ -98,10 +98,10 @@ int main(int argc, char* argv[])
 	if(listen(listenSOCKET, 5) < 0){
 		printf("listen() failed!");
 		return 1;
-	}
+	}*/
 
-	//servicePORT = atoi(argv[1]);
-	//listenSOCKET = CreateTCPServerSocket(servicePORT, serverADDRESS);
+	servicePORT = atoi(argv[1]);
+	listenSOCKET = CreateTCPServerSocket(servicePORT, &serverADDRESS);
 	
 	clientADDRESSLENGTH[socketINDEX] = sizeof(clientADDRESS[socketINDEX]); // Set addr length of the current client
 
@@ -130,11 +130,13 @@ int main(int argc, char* argv[])
 	// Close socket
 	close(listenSOCKET);
 }
-/*
-int CreateTCPServerSocket(unsigned short port, struct sockaddr_in serverADDRESS)
+
+int CreateTCPServerSocket(unsigned short port, struct sockaddr_in *serverADDR)
 {
 	int listenSOCKET;
-	unsigned short servicePORT;										// Server port	
+	//unsigned short servicePORT;										// Server port	
+	struct sockaddr_in serverADDRESS;		// Array of client addr and server addr	
+	serverADDRESS = *serverADDR;				// Make a local copy of the serverADDR struct
 
 	// Create socket for incomming connection	
 	if((listenSOCKET = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
@@ -147,8 +149,10 @@ int CreateTCPServerSocket(unsigned short port, struct sockaddr_in serverADDRESS)
 	memset(&serverADDRESS, 0, sizeof(serverADDRESS));			// Zero out server address structure
 	serverADDRESS.sin_family = AF_INET;								// Internet address family
 	serverADDRESS.sin_addr.s_addr = htonl(INADDR_ANY);			// Any incomming interface in bigendian format
-	servicePORT = atoi(port);										// Get service port
-	serverADDRESS.sin_port = htons(servicePORT);					// Set service port in bigendian format 
+	serverADDRESS.sin_port = htons(port);					// Set service port in bigendian format 
+	//serverADDRESS->sin_family = AF_INET;								// Internet address family
+	//serverADDRESS->sin_addr->s_addr = htonl(INADDR_ANY);			// Any incomming interface in bigendian format
+	//serverADDRESS->sin_port = htons(port);					// Set service port in bigendian format 
 
 	// Bind to local address
 	if (bind(listenSOCKET, (struct sockaddr *) &serverADDRESS, sizeof(serverADDRESS)) < 0) {
@@ -163,5 +167,7 @@ int CreateTCPServerSocket(unsigned short port, struct sockaddr_in serverADDRESS)
 		return 1;
 	}
 
+	*serverADDR = serverADDRESS; 										// Copy the local copy of serverADDRESS struct back to original
+
 	return listenSOCKET;
-}*/
+}
