@@ -7,12 +7,10 @@
 
 #include <pthread.h>
 
-void *ClientRoutine(void *ptr);
-int parseARGS(char **args, char *line);
 int DieWithError(char *errMSG, int listenSOCK);
-int FileUpload(char *recvBUFF, int connectSOCKET);
-int FileDownload(char *sendBUFF, int connectSOCKET);
 int CreateTCPServerSocket(unsigned short port, struct sockaddr_in *serverADDR);
+int parseARGS(char **args, char *line);
+void *ClientRoutine(void *ptr);
 
 int main(int argc, char* argv[])
 {
@@ -23,11 +21,6 @@ int main(int argc, char* argv[])
 	struct sockaddr_in clientADDRESS[512], serverADDRESS;		// Struct of client addr and server addr	
 	pthread_t threads[512];												// Array of thread IDs, max 512 
 
-	// Check command syntax
-	if(argc != 2){
-		printf("Usage: %s <PORT>\n", argv[0]);
-		return 1;
-	} 
 
 	servicePORT = atoi(argv[1]);										// Get service port
 
@@ -61,7 +54,6 @@ int main(int argc, char* argv[])
 
 	// Close socket
 	close(listenSOCKET);
-	
 }
 
 int CreateTCPServerSocket(unsigned short port, struct sockaddr_in *serverADDR)
@@ -112,95 +104,46 @@ int parseARGS(char **args, char *line){
 	return tmp - 1;
 }
 
-int FileUpload(char *recvBUFF, int connectSOCKET)
-{
-	int received = 0;							// Bytes counter
-	char *filename, *filesize;				
-	char *header[4096];						// Array to store file info (filename, filesize)
-	FILE *recvFILE;							// File pointer
-
-	recvBUFF[strlen(recvBUFF) - 2] = 0;				// Mark end of string by eliminating last '/n'
-	parseARGS(header, recvBUFF);						// Parse recvBUFF and copy fields in header[]
-	filename = header[1];
-	filesize = header[2];
-
-	printf("Filename: %s\n", filename);
-	printf("Filesize: %d KB\n", atoi(filesize) / 1024);
-	
-	recvBUFF[0] = 0;												// Zero out header[]
-	recvFILE = fopen ( filename,"w" );						// Open new file recvFILE for write
-	while(1){
-		// Receive file from client caracter by caracter and write it it recvBUFF[]
-		if( recv(connectSOCKET, recvBUFF, 2, 0) != 0 ) {
-			fwrite (recvBUFF , sizeof(recvBUFF[0]) , 1 , recvFILE );		// Write one received caracter to file recvFILE
-			received++;																	// Increase Bytes counter by one	
-			recvBUFF[0] = 0;															// Erase the caracter from buffer
-			} else {
-			// Print status after the transmission had been ended
-			printf("Done: %s [ %d of %s Bytes]\n", filename, received, filesize);
-			return 0;
-			}
-	}
-}
-
-int FileDownload(char *recvBUFF, int connectSOCKET)
-{
-	int ch;
-	int count1=1, count2=1, percent;
-	char *filename, *filesize;				
-	char toSEND[1];
-	char *header[4096];						// Array to store file info (filename, filesize)
-	char remoteFILE[4096];
-	FILE *sendFILE;
-	
-	recvBUFF[strlen(recvBUFF) - 2] = 0;				// Mark end of string by eliminating last '/n'
-	parseARGS(header, recvBUFF);						// Parse recvBUFF and copy fields in header[]
-	filename = header[1];
-	filesize = header[2];
-
-	// Open local file to send to client
-	sendFILE = fopen(filename, "r");
-	if(!sendFILE){
-		printf("Error openning file\n");
-		close(connectSOCKET);
-		return 1;
-	} else {
-		long fileSIZE;
-		fseek(sendFILE, 0, SEEK_END);
-		fileSIZE = ftell(sendFILE);
-		rewind(sendFILE);
-
-		// Push info about downloading file
-		sprintf(remoteFILE, "DOWNLOAD:%s:%ld\r\n", filename, fileSIZE); // Send with the same filename
-		if(!send(connectSOCKET, remoteFILE, sizeof(remoteFILE), 0)){
-			DieWithError("Server failed to send file for the client\n", connectSOCKET);
-		}
-		
-		//// Send file character by character
-		//percent = fileSIZE / 100;
-		//while(() != EOF){}	
-
-	}
-
-}
 
 void *ClientRoutine(void *ptr){
 	int connectSOCKET = (intptr_t) ptr;			// Client socket, 'intptr_t' type has the same size of the 'ptr' pointer 
 	char recvBUFF[4096];						// Buffer for data
+	char *filename, *filesize;				
+	FILE * recvFILE;							// File pointer
+	int received = 0;							// Bytes counter
+	char *header[4096];						// Array to store file info (filename, filesize)
+
 
 	while(1){
 		// Receive message from client (filename, filesize) and write it to recvBUFF[]
 		if( recv(connectSOCKET, recvBUFF, sizeof(recvBUFF), 0) ){
-			if(!strncmp(recvBUFF,"UPLOAD",6)) {
-				FileUpload(recvBUFF, connectSOCKET);
+			if(!strncmp(recvBUFF,"FBEGIN",6)) {
+				recvBUFF[strlen(recvBUFF) - 2] = 0;				// Mark end of string by eliminating last '/n'
+				parseARGS(header, recvBUFF);						// Parse recvBUFF and copy fields in header[]
+				filename = header[1];
+				filesize = header[2];
+
+				printf("Filename: %s\n", filename);
+				printf("Filesize: %d KB\n", atoi(filesize) / 1024);
+		}
+		recvBUFF[0] = 0;												// Zero out header[]
+		recvFILE = fopen ( filename,"w" );						// Open new file recvFILE for write
+		while(1){
+			// Receive file from client caracter by caracter and write it it recvBUFF[]
+			if( recv(connectSOCKET, recvBUFF, 1, 0) != 0 ) {
+				fwrite (recvBUFF , sizeof(recvBUFF[0]) , 1 , recvFILE );		// Write one received caracter to file recvFILE
+				received++;																	// Increase Bytes counter by one	
+				recvBUFF[0] = 0;															// Erase the caracter from buffer
+				} else {
+				// Print status after the transmission had been ended
+				printf("Done: %s [ %d of %s Bytes]\n", filename, received, filesize);
 				return 0;
-			} else if(!strncmp(recvBUFF, "DOWNLOAD",8)){
-				FileDownload(recvBUFF, connectSOCKET);
-				return 0;
-			} else {
-				// If we didn't receive initialization message from clients (filename, filesize)
-				printf("Client dropped connection\n");
+				}
 			}
+			return 0;
+		} else {
+		// If we didn't receive initialization message from clients (filename, filesize)
+		printf("Client dropped connection\n");
 		}
 	return 0;
 	}
