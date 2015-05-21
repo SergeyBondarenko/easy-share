@@ -123,7 +123,7 @@ int SendFile(char *recvBUFF, int connectSOCKET)
 	recvBUFF[strlen(recvBUFF) - 2] = 0;				// Mark end of string by eliminating last '/n'
 	parseARGS(header, recvBUFF);						// Parse recvBUFF and copy fields in header[]
 	filename = header[1];
-	filesize = header[2];
+	//filesize = header[2];
 
 	// Open local file to send to client
 	sendFILE = fopen(filename, "r");
@@ -145,9 +145,12 @@ int SendFile(char *recvBUFF, int connectSOCKET)
 		
 		//// Send file character by character
 		//percent = fileSIZE / 100;
-		//while(() != EOF){}	
-
+		//while((ch = getc(sendFILE)) != EOF){
+		//	toSEND[0] = ch;
+		//	send(connectSOCKET, toSEND, 1, 0);
+		//}	
 	}
+	fclose(sendFILE);
 }
 
 int ReceiveFile(char *recvBUFF, int connectSOCKET)

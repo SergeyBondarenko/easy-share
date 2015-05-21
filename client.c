@@ -7,6 +7,13 @@
 
 // default port 31337
 
+int parseARGS(char **args, char *line)
+{
+	int tmp = 0;
+	args[tmp] = strtok(line, ":");
+	while((args[++tmp] = strtok(NULL, ":")) != NULL);
+	return tmp - 1;
+}
 
 int ReceiveFile(int socketDESC, char *lfile, char *rfile)
 {
@@ -22,6 +29,27 @@ int ReceiveFile(int socketDESC, char *lfile, char *rfile)
 
 	if(recv(socketDESC, recvBUFF, sizeof(recvBUFF), 0)){
 		printf("%s\n", recvBUFF);
+
+		recvBUFF[strlen(recvBUFF) - 2] = 0;
+		parseARGS(header, recvBUFF);
+		filename = header[1];
+		filesize = header[2];
+
+		printf("Filename: %s\n", filename);
+		printf("Filename: %d KB\n", atoi(filesize) / 1024);
+
+		//recvBUFF[0] = 0;
+		//recvFILE = fopen(rfile, "w");
+		//while(1){
+		//	if(recv(socketDESC, recvBUFF, 1, 0) != 0){
+		//		fwrite(recvBUFF, sizeof(recvBUFF[0]), 1, recvFILE);
+		//		received++;
+		//		recvBUFF[0] = 0;
+		//	} else {
+		//		printf("Done: %s [ %d of %s Bytes]\n", rfile, received, filesize);
+		//		return 0;
+		//	}
+		//}
 	}	
 
 	return 0;
