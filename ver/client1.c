@@ -40,7 +40,7 @@ int fileSEND(char *serverIP, char *PORT, char *lfile, char *rfile){
 	}
 
 	// Open local file to copy
-	file_to_send = fopen (lfile,"r");
+	file_to_send = fopen (lfile,"rb");
 	if(!file_to_send) {
 		printf("Error opening file\n");
 		close(socketDESC);

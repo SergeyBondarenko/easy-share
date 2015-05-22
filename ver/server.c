@@ -39,7 +39,7 @@ int client(void *ptr){
 				printf("Filesize: %d Kb\n", atoi(filesize) / 1024);
 		}
 		recvBUFF[0] = 0;
-		recvFILE = fopen ( filename,"w" );
+		recvFILE = fopen ( filename,"wb" );
 		while(1){
 			if( recv(connectSOCKET, recvBUFF, 1, 0) != 0 ) {
 				fwrite (recvBUFF , sizeof(recvBUFF[0]) , 1 , recvFILE );
