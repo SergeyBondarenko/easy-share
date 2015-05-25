@@ -27,6 +27,13 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+// List of Commands:
+//// time
+//// echo
+//// cli
+//// download <file name>
+//// upload <file name>
+	
 	servIP = argv[1];						// Server IP addr
 	//echoString = argv[2];				// String to echo
 
@@ -68,8 +75,8 @@ int main(int argc, char *argv[])
 		if((bytesRcvd = recv(sock, buffer, RCVBUFSIZE - 1, 0)) <= 0)
 			DieWithError("recv() failed or connection closed prematurely");
 		totalBytesRcvd += bytesRcvd;				// Keep tally of total bytes
-		buffer[bytesRcvd] = "\0";					// Terminate the string
-		printf("%s\n", buffer);						// Print the echo buffer
+		buffer[bytesRcvd] = "\0";				// Terminate the string
+		printf("%s\n", buffer);							// Print the echo buffer
 	}
 	
 	printf("\n");
