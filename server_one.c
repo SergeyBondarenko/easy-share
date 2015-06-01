@@ -17,6 +17,11 @@ int parseARGS(char **args, char *line){
     return tmp - 1;
 }
 
+void fileDOWNLOAD(int connectSOCKET, char *infoBUFF)
+{
+
+}
+
 void fileUPLOAD(int connectSOCKET, char *infoBUFF)
 {
 char *filename, *filesize;
@@ -59,9 +64,10 @@ void *ThreadRoutine(void *ptr){
 
     // Receive message from client (filename, filesize) and write it to infoBUFF[]
     if( recv(connectSOCKET, infoBUFF, sizeof(infoBUFF), 0) ){
-        if(!strncmp(infoBUFF,"UPLOAD",6)) {
+        if(!strncmp(infoBUFF,"UPLOAD",6))
             fileUPLOAD(connectSOCKET, infoBUFF);
-        }
+        else if(!strncmp(infoBUFF,"DOWNLOAD",8))
+				fileDOWNLOAD(connectSOCKET, infoBUFF);
     } else {
     // If we didn't receive initialization message from clients (filename, filesize)
     printf("Client dropped connection\n");
