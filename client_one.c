@@ -46,7 +46,7 @@ if(!fileSEND) {
         printf("Filesize: %ld B\n", fileSIZE);
 
         total_sent += bytes_sent;
-        printf("Total sent: %d%% (%ld B); Now sent: %ld B\n", (total_sent*100)/fileSIZE, total_sent, bytes_sent);
+        printf("Total sent: %ld%% (%ld B); Now sent: %ld B\n", (total_sent*100)/fileSIZE, total_sent, bytes_sent);
         printf("---\n");
 
         to_send -= bytes_sent;
