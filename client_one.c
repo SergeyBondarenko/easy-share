@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define TESTLOCAL "127.0.0.1"
 #define BUFFSIZE 4096
+//#define TESTLOCAL "127.0.0.1"
 // default port 31337
 
 int parseARGS(char **args, char *line)
@@ -26,20 +26,21 @@ int fileDOWNLOAD(int socketDESC, char *lfile, char *rfile)
 	
 	sprintf(remoteFILE,"DOWNLOAD:%s:%s\r\n", lfile, rfile);
 	
-	total_bytes = 0;
-	while(total_bytes != sizeof(remoteFILE)){
+	total_bytes = BUFFSIZE;
+	do {
 		if((sent_bytes = send(socketDESC, remoteFILE, sizeof(remoteFILE), 0)) < 0)
 			printf("fileDOWNLOAD() Failed to send file name info!\n");
-		total_bytes += sent_bytes;
-	}
+		total_bytes -= sent_bytes;
+	} while(total_bytes > 0);
+	printf("%s\n", remoteFILE);
 	
-	total_bytes = 0;
-	while(total_bytes != sizeof(remoteFILE)){
+	total_bytes = BUFFSIZE;
+	do {
 		if((recv_bytes = recv(socketDESC, remoteFILE, sizeof(remoteFILE), 0)) < 0)
 			printf("fileDOWNLOAD() Failed to receive file size info!\n");
-		total_bytes += recv_bytes;
-	}
-	//printf("%s\n", remoteFILE);
+		total_bytes -= recv_bytes;
+	} while(total_bytes > 0);
+	printf("%s\n", remoteFILE);
 	
 	remoteFILE[strlen(remoteFILE) - 2] = 0;
 	parseARGS(header, remoteFILE);
@@ -59,17 +60,14 @@ int fileDOWNLOAD(int socketDESC, char *lfile, char *rfile)
 		if((recv_bytes = recv(socketDESC, buffer, to_read, 0)) < 0)
 			printf("fileDOWNLOAD() Failed to recv the file!\n");
 		
-	   printf("33[0;0H");
-	   printf( "\33[2J");
+		total_bytes -= recv_bytes;
+		fwrite(buffer, 1, recv_bytes, recvFILE);
+	   //printf("33[0;0H");
+	   //printf( "\33[2J");
 	   printf("Filename: %s\n", filename);
 	   printf("Filesize: %ld B\n", (long)atoi(filesize));
-	
-		total_bytes -= recv_bytes;
-	   printf("Total received: %ld%% (%ld B); Now received: %ld B\n", 100-((total_bytes*100)/(long)atoi(filesize)), total_bytes, recv_bytes);
-	   printf("---\n");
-
-		fwrite(buffer, 1, recv_bytes, recvFILE);
-	} while(total_bytes != 0);
+	   printf("Total received: %ld%% (%ld B); Now received: %ld B\n---\n", 100-((total_bytes*100)/(long)atoi(filesize)), total_bytes, recv_bytes);
+	} while(total_bytes > 0);
 
 	fclose(recvFILE);
 

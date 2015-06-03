@@ -45,12 +45,12 @@ int fileDOWNLOAD(int connectSOCKET, char *infoBUFF)
 	
 		sprintf(localFILE, "DOWNLOAD:%s:%ld\r\n", rfilename, fileSIZE);
 		
-		total_bytes = 0;
-		while(total_bytes != sizeof(localFILE)){
+		total_bytes = BUFFSIZE;
+		do{
 			if((sent_bytes = send(connectSOCKET, localFILE, sizeof(localFILE), 0)) < 0)
 				printf("fileDOWNLOAD() Failed to send file info!\n");
-			total_bytes += sent_bytes;
-		}
+			total_bytes -= sent_bytes;
+		} while(total_bytes > 0);
 	
 		total_bytes = fileSIZE;
 		long fileSLICE = fileSIZE/10; 
@@ -65,7 +65,7 @@ int fileDOWNLOAD(int connectSOCKET, char *infoBUFF)
 	      printf("Data sent: %ld\n", sent_bytes);
 	      printf("---\n");
 			//printf("Total sent: %ld%% (%ld B); Now sent: %ld B\n", (total_bytes*100)/fileSIZE, total_bytes, sent_bytes);
-		} while(total_bytes != 0);
+		} while(total_bytes > 0);
 		
 	}
 		
