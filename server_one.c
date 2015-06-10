@@ -89,7 +89,8 @@ void fileUPLOAD(int connectSOCKET, char *infoBUFF)
 	
 	recvFILE = fopen(filename, "wb");
 	
-	int bytes_read = 0, to_read = atoi(filesize);
+	int bytes_read = 0, total_bytes, to_read;
+	total_bytes = to_read = atoi(filesize);
 	char *buffer = malloc(atoi(filesize));
 	
 	// Receive remote file and write it into local file
@@ -100,10 +101,12 @@ void fileUPLOAD(int connectSOCKET, char *infoBUFF)
 	    printf("To read: %d\n", to_read);
 	    printf("Data read: %d\n", bytes_read);
 	    printf("---\n");
-	    to_read -= bytes_read;
+	    //to_read -= bytes_read;
+	    total_bytes -= bytes_read;
 	
 	    fwrite(buffer, 1, bytes_read, recvFILE);
-	} while(to_read != 0);                      // Loop while there is nothing to receive
+	//} while(to_read != 0);                      // Loop while there is nothing to receive
+	} while(total_bytes > 0);                      // Loop while there is nothing to receive
 	
 	fclose(recvFILE);
 	

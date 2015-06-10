@@ -77,6 +77,7 @@ int fileUPLOAD(int socketDESC, char *lfile, char *rfile)
 {
 	char remoteFILE[BUFFSIZE];
 	FILE *fileSEND;
+	long bytes_sent, total_bytes;
 	
 	// Open local file to copy
 	fileSEND = fopen (lfile, "rb");
@@ -90,31 +91,38 @@ int fileUPLOAD(int socketDESC, char *lfile, char *rfile)
 	    rewind(fileSEND);                                           // Set the file position to the BEGIN
 	
 	    // Get info of a sending file and send to the server
+		 total_bytes = BUFFSIZE;
 	    sprintf(remoteFILE,"UPLOAD:%s:%ld\r\n", rfile, fileSIZE);
-	    if(send(socketDESC, remoteFILE, sizeof(remoteFILE), 0) < 0)
-	        printf("Failed to send file info!\n");
+		 do {
+	    	if((bytes_sent = send(socketDESC, remoteFILE, sizeof(remoteFILE), 0)) < 0)
+	    	    printf("Failed to send file info!\n");
+		 	total_bytes -= bytes_sent;
+		 } while(total_bytes > 0);
 	
-	    long bytes_sent = 0, total_sent = 0, to_send = fileSIZE, bytes_read;
+	    long total_bytes, to_send, bytes_read;
 	    long fileSLICE = fileSIZE/10;                               // Set slice to 10% of the file
 	    char *buffer = malloc(fileSLICE);                           // Allocate memmory for the slice
 	
+		 to_send = total_bytes = fileSIZE;
 	    // Read and send the file by slices, 10% each
 	    do {
 	        bytes_read = fread(buffer, 1, fileSLICE, fileSEND);
 	        if((bytes_sent = send(socketDESC, buffer, bytes_read, 0)) < 0)
 	            printf("Failed to send the file!\n");
 	
-	        printf("33[0;0H");
-	        printf( "\33[2J");
+	        //printf("33[0;0H");
+	        //printf( "\33[2J");
 	        printf("Filename: %s\n", lfile);
 	        printf("Filesize: %ld B\n", fileSIZE);
 	
-	        total_sent += bytes_sent;
-	        printf("Total sent: %ld%% (%ld B); Now sent: %ld B\n", (total_sent*100)/fileSIZE, total_sent, bytes_sent);
+	        //total_sent += bytes_sent;
+	        total_bytes -= bytes_sent;
+	        printf("Total sent: %ld%% (%ld B); Now sent: %ld B\n", (total_bytes*100)/fileSIZE, total_bytes, bytes_sent);
 	        printf("---\n");
 	
-	        to_send -= bytes_sent;
-	    } while(to_send != 0);                                      // Repeat the loop while 0 Bytes are left to send
+	        //to_send -= bytes_sent;
+	    //} while(to_send != 0);                                      // Repeat the loop while 0 Bytes are left to send
+	    } while(total_bytes > 0);                                      // Repeat the loop while 0 Bytes are left to send
 	
 	}
 	
