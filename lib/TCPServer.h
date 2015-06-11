@@ -4,6 +4,10 @@
 #include <stdlib.h>		// for atoi()
 #include <string.h>		//	for memset
 #include <unistd.h>		//	for clode()
+#include <string.h>
+#include <netdb.h>
+#include <netinet/in.h>
+
 
 void DieWitError(char *errMSG);						// Error handling function
 void HandleTCPClient(int clntSocket);				// TCP client handling 
