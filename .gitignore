@@ -1,4 +1,4 @@
-files/*.*
-compiled/*.*
-test/*.*
-ver/*.*
+files/**
+compiled/**
+test/**
+ver/**
