@@ -11,7 +11,7 @@ void DieWithError(char *errorMessage); // Error handling function
 
 int main(int argc, char *argv[])
 {
-	int i, sock;								// Socket descriptor
+	int i, percent_sent, sock;								// Socket descriptor
 	struct sockaddr_in servAddr;	// Echo server address
 	unsigned short servPort;		// Echo server port
 	char *servIP;							// Server IP addr
@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	char buffer[RCVBUFSIZE];		// Buffer for echo string
 	unsigned int echoStringLen, commandStringLen;		// Length of string to echo
 	int bytesRcvd, totalBytesRcvd;		// Bytes (B) read in single recv() and total B read
-	long bytes_recvd, bytes_sent, bytes_read, bytes_total, file_size;
+	long bytes_recvd, bytes_sent, bytes_read, bytes_total, bytes_left, file_size;
 	FILE *aFile;
 
 	if((argc != 6)){
@@ -61,20 +61,24 @@ int main(int argc, char *argv[])
 	if((bytes_sent = send(sock, buffer, sizeof(buffer), 0)) < 0)
 		DieWithError("send() failed!\n");
 
+	bytes_total = bytes_left = file_size;
+	file_size /= 10;
 	char *file_buffer = malloc(file_size);	
 	bzero(file_buffer, file_size);
-	bytes_total = file_size;
 
 	printf("\n-----\n");
-	while((bytes_read = fread(file_buffer, sizeof(char), file_size, aFile)) > 0){
-		if((bytes_sent = send(sock, file_buffer, bytes_read, 0)) < 0)
-			DieWithError("send() after fread() failed!");
-		
-		bytes_total -= bytes_sent;
-		printf("Sent %ld B from file's data, remaining data = %ld\n", bytes_sent, bytes_total);
+	while(!feof(aFile)){
+		while((bytes_read = fread(file_buffer, sizeof(char), file_size, aFile)) > 0){
+			if((bytes_sent = send(sock, file_buffer, bytes_read, 0)) < 0)
+				DieWithError("send() after fread() failed!");
 
-		bzero(file_buffer, file_size);
-	}	
+			bytes_left -= bytes_sent;
+			percent_sent = ((bytes_total-bytes_left)*100)/bytes_total;
+
+			printf("Sent %d%% (%ld B), remaining = %ld B\n", percent_sent, bytes_sent, bytes_left);
+			bzero(file_buffer, file_size);
+		}	
+	}
 
 	fclose(aFile);
 	free(file_buffer);
