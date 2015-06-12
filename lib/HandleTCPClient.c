@@ -26,9 +26,9 @@ void HandleTCPClient(int clntSock)
 		file_name = header[1];
 		file_size = atoi(header[2]);
 
-		//char *file_buffer = malloc(file_size);
-		char file_buffer[file_size];
-		bzero(file_buffer, file_size);
+		char *file_buffer = malloc(file_size);
+		//char file_buffer[file_size];
+		//bzero(file_buffer, file_size);
 		bytes_total = file_size;
 
 		aFile = fopen(file_name, "wb");
@@ -50,7 +50,7 @@ void HandleTCPClient(int clntSock)
 		//}
 
 		fclose(aFile);	
-		//free(file_buffer);
+		free(file_buffer);
 	
 
 	}

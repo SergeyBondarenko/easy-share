@@ -11,7 +11,7 @@ void DieWithError(char *errorMessage); // Error handling function
 
 int main(int argc, char *argv[])
 {
-	int sock;								// Socket descriptor
+	int i, sock;								// Socket descriptor
 	struct sockaddr_in servAddr;	// Echo server address
 	unsigned short servPort;		// Echo server port
 	char *servIP;							// Server IP addr
@@ -61,8 +61,7 @@ int main(int argc, char *argv[])
 	if((bytes_sent = send(sock, buffer, sizeof(buffer), 0)) < 0)
 		DieWithError("send() failed!\n");
 
-	//char *file_buffer = malloc(file_size);	
-	char file_buffer[file_size];	
+	char *file_buffer = malloc(file_size);	
 	bzero(file_buffer, file_size);
 	bytes_total = file_size;
 
@@ -77,21 +76,8 @@ int main(int argc, char *argv[])
 		bzero(file_buffer, file_size);
 	}	
 
-	////int offset = 0;
-	////while(((bytes_sent = sendfile(sock, aFile, &offset, file_size)) > 0) && (bytes_total > 0)){
-	//if((bytes_read = fread(file_buffer, sizeof(char), file_size, aFile)) > 0){
-	//	while(((bytes_sent = send(sock, file_buffer, bytes_read, 0)) > 0) && (bytes_total > 0)){
-	//		bytes_total -= bytes_sent;
-	//		printf("bytes_read %ld\n", bytes_read);
-	//		printf("Sent %ld B from file's data, remaining data = %ld\n", bytes_sent, bytes_total);
-	//	}
-	//}
-	////	if((bytes_sent = send(sock, file_buffer, file_size, 0)) < 0)
-	////		DieWithError("send() failed!\n");
-	
-
 	fclose(aFile);
-	//free(file_buffer);
+	free(file_buffer);
 
 	printf("\n");
 
