@@ -228,23 +228,23 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 
 void SysCmd(int sock, char *myCommand)
 {
-   //printf("System commands func is under construction!\n");  
-   //exit(1);
-	long bytes_recvd, bytes_sent;
-	char buffer[BUFFSIZE];
+   printf("System commands func is under construction!\n");  
+   exit(1);
+	//long bytes_recvd, bytes_sent;
+	//char buffer[BUFFSIZE];
 
-	// Create and send status message for DOWNLOAD
-	sprintf(buffer, "EXEC:%s:%d\r\n", myCommand, 1);
-	if((bytes_sent = send(sock, buffer, sizeof(buffer), 0)) < 0)
-		DieWithError("send() failed!\n");
+	//// Create and send status message for DOWNLOAD
+	//sprintf(buffer, "EXEC:%s:%d\r\n", myCommand, 1);
+	//if((bytes_sent = send(sock, buffer, sizeof(buffer), 0)) < 0)
+	//	DieWithError("send() failed!\n");
 
-	bzero(buffer, sizeof(buffer));
+	//bzero(buffer, sizeof(buffer));
 
-	if((bytes_recvd = recv(sock, buffer, sizeof(buffer), 0)) < 0)
-		DieWithError("recv() failed!\n");
+	//if((bytes_recvd = recv(sock, buffer, sizeof(buffer), 0)) < 0)
+	//	DieWithError("recv() failed!\n");
 
-	printf("Files in . dir:\n%s\n", buffer);
-	bzero(buffer, sizeof(buffer));
+	//printf("Files in . dir:\n%s\n", buffer);
+	//bzero(buffer, sizeof(buffer));
 }
 
 int parseARGS(char **args, char *line)
