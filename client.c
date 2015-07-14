@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	if(connect(sock, (struct sockaddr*) &servAddr, sizeof(servAddr)) < 0)
 		DieWithError("connect() failed!");
 
-	//
+	// Open file for read in binary mode
 	aFile = fopen(lfile, "rb");
 	if(!aFile)
 		DieWithError("fopen() failed!\n");
@@ -57,31 +57,69 @@ int main(int argc, char *argv[])
 	file_size = ftell(aFile);
 	rewind(aFile);			
 
+	memset(buffer, 5, sizeof(buffer));
 	sprintf(buffer, "UPLOAD:%s:%ld\r\n", rfile, file_size);
-	if((bytes_sent = send(sock, buffer, sizeof(buffer), 0)) < 0)
-		DieWithError("send() failed!\n");
 
-	bytes_total = bytes_left = file_size;
-	file_size /= 10;
-	char *file_buffer = malloc(file_size);	
-	bzero(file_buffer, file_size);
+	int all_bytes_sent = 0;
+	while(all_bytes_sent != sizeof(buffer)){
+		bytes_sent = send(sock, (buffer + all_bytes_sent), (sizeof(buffer) - all_bytes_sent), 0);
 
-	printf("\n-----\n");
-	while(!feof(aFile)){
-		while((bytes_read = fread(file_buffer, sizeof(char), file_size, aFile)) > 0){
-			if((bytes_sent = send(sock, file_buffer, bytes_read, 0)) < 0)
-				DieWithError("send() after fread() failed!");
+		if(bytes_sent < 0)
+			DieWithError("send() UPLOAD msg failed!\n");
 
-			bytes_left -= bytes_sent;
-			percent_sent = ((bytes_total-bytes_left)*100)/bytes_total;
-
-			printf("Sent %d%% (%ld B), remaining = %ld B\n", percent_sent, bytes_sent, bytes_left);
-			bzero(file_buffer, file_size);
-		}	
+		all_bytes_sent += bytes_sent;
 	}
 
+	//char *file_buffer = (char *)malloc(chunk_size * sizeof(char));	
+	//if(NULL == file_buffer){
+	//	fprintf(stderr, "malloc failed\n");
+	//	return(-1);
+	//}
+
+	int chunk_size = 256;
+	char file_buffer[chunk_size];
+	bytes_total = bytes_left = file_size;
+
+	printf("\n-----\n");
+	while(1){
+		char file_buffer[chunk_size];
+		memset(file_buffer, 0, sizeof(file_buffer));
+
+		if((bytes_read = fread(file_buffer, sizeof(char), chunk_size, aFile)) < 0)
+			DieWithError("fread() failed!\n");
+
+		if(bytes_read > 0){
+			if((bytes_sent = send(sock, file_buffer, bytes_read, 0)) < 0)
+				DieWithError("send() after fread() failed!");
+			
+			bytes_left -= bytes_sent;
+			percent_sent = ((bytes_total-bytes_left)*100)/bytes_total;
+			printf("Sent %d%% (%ld B), remaining = %ld B\n", percent_sent, bytes_sent, bytes_left);
+		}
+
+		if(bytes_read < chunk_size){
+			if(feof(aFile))
+				printf("End of file.\n");
+			if(ferror(aFile))
+				printf("Error reading!\n");
+			break;
+		}
+	}
+
+	//memset(file_buffer, 0, sizeof(file_buffer));
+	//while((bytes_read = fread(file_buffer, sizeof(char), sizeof(file_buffer), aFile)) > 0){
+	//	if((bytes_sent = send(sock, file_buffer, bytes_read, 0)) < 0)
+	//		DieWithError("send() after fread() failed!");
+
+	//	bytes_left -= bytes_sent;
+	//	percent_sent = ((bytes_total-bytes_left)*100)/bytes_total;
+
+	//	printf("Sent %d%% (%ld B), remaining = %ld B\n", percent_sent, bytes_sent, bytes_left);
+	//	memset(file_buffer, '0', sizeof(file_buffer));
+	//}	
+
 	fclose(aFile);
-	free(file_buffer);
+	//free(file_buffer);
 
 	printf("\n");
 
