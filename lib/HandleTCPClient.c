@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <unistd.h>
-//#include <arpa/inet.h>
-//#include <sys/socket.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #define BUFFSIZE 4096
 
@@ -165,42 +167,56 @@ void DownloadFile(int clntSock, char *sbuffer)
 
 void SysCmd(int clntSock, char *buffer)
 {
-//	char *cmd_name, *file_name, *header[BUFFSIZE];
-//	char local_buffer[BUFFSIZE];
-//	long bytes_sent, bytes_recvd;;
-//	DIR *dir;
-//	struct dirent *dp;
-//
-//	printf("%s\n", buffer);
-//	parseARGS(header, buffer);
-//	cmd_name = header[1];
-//
-//	if(!strcmp(cmd_name, "dir")){
-//		dir = opendir (".");
-//		if(!dir)
-//			DieWithError("opendir() failed!\n");
-//		else{
-//			//char *cmd_buffer = malloc(BUFFSIZE);
-//			//bzero(cmd_buffer, BUFFSIZE);
-//
-//			while ((dp=readdir(dir)) != NULL) {
-//				if ( !strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..") ){
-//        		    // do nothing (straight logic)
-//        		} else {
-//        		    file_name = dp->d_name; // use it
-//					strcat(local_buffer, file_name);
-//					strcat(local_buffer, ":");
-//					//sprintf(cmd_buffer, "%s", dp->d_name);
-//					//printf("%s\n", cmd_buffer);
-//        		    //printf("file_name: \"%s\"\n",file_name);
-//        		}	
-//			}
-//
-//			printf("%s\n", local_buffer);
-//			if((bytes_sent = send(clntSock, local_buffer, sizeof(local_buffer), 0)) < 0)	
-//				DieWithError("send() failed!\n");
-//			bzero(local_buffer, sizeof(local_buffer));
-//		}
-//		closedir(dir);
-//	}
+char local_buffer[BUFFSIZE], *cmd_name, *cmd_args, *file_name, *header[BUFFSIZE];
+long bytes_sent, all_bytes_sent;
+DIR *dir;
+struct dirent *dp;
+
+printf("%s\n", buffer);
+
+memset(local_buffer, 0, sizeof(local_buffer));
+
+// Parse buffer to get EXEC commands
+parseARGS(header, buffer);
+cmd_name = header[1];
+cmd_args = header[2];
+
+printf("Args: %s\n", cmd_args);
+
+// Execute command "dir"
+if(!strcmp(cmd_name, "dir")){
+
+	// Open directory
+	dir = opendir(cmd_args);
+	if(!dir)
+		DieWithError("opendir() failed!\n");
+	else {
+		// Read the directory and copy all file/dir names to local_buffer array
+		while((dp = readdir(dir)) != NULL) {
+			if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..")){
+       		    // do nothing (straight logic)
+       		} else {
+       		   file_name = dp->d_name; // use it
+					strcat(local_buffer, file_name);
+					strcat(local_buffer, ":");
+       		}	
+		}
+
+		// Server status msg
+		printf("%s\n", local_buffer);
+
+		// Send info about files/dirs to client.
+		// Repeat while amount of all byte sent equals BUFFSIZE. 
+		all_bytes_sent = 0;
+		while(all_bytes_sent != sizeof(local_buffer)){
+			if((bytes_sent = send(clntSock, (local_buffer + all_bytes_sent), (sizeof(local_buffer) - all_bytes_sent), 0)) < 0)	
+				DieWithError("send() failed!\n");
+
+			all_bytes_sent += bytes_sent;	
+		}
+	}
+
+	// Close directory
+	closedir(dir);
+}
 }

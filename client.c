@@ -11,7 +11,7 @@ int parseARGS(char **args, char *line);
 void DieWithError(char *errorMessage); // Error handling function
 void UploadFile(int sock, char *lfile, char *rfile);
 void DownloadFile(int sock, char *lfile, char *rfile);
-void SysCmd(int sock, char *myCommand);
+void SysCmd(int sock, char *myCommand, char *myArgs);
 
 int main(int argc, char *argv[])
 {
@@ -19,19 +19,28 @@ int main(int argc, char *argv[])
    struct sockaddr_in servAddr;  // Echo server address
    unsigned short servPort;      // Echo server port
    char *servIP;                    // Server IP addr
-   char *myCommand, *commandOpt, *lfile, *rfile;
+   char *myCommand, *myArgs, *commandOpt, *lfile, *rfile;
 
    // Check cmd args
-   if(argc == 6 || argc == 4){
+   if(argc == 6 || argc == 5){
       servIP = argv[1];                // Server IP addr
       servPort = atoi(argv[2]);
       myCommand = argv[3];
-      if(argc == 6){
+		
+		if(!strcmp(myCommand, "dir"))
+			myArgs = argv[4];
+
+      //if(argc == 6){
+		if(!strcmp(myCommand, "upload") || !strcmp(myCommand, "download")){
          lfile = argv[4];
          rfile = argv[5];
       }
+
    } else {
-      fprintf(stderr, "Usage: %s <Server IP> [<Echo Port>] <Command> <File> <New File>\n", argv[0]);
+      fprintf(stderr, "Available commands: dir, upload, download.\nExamples:\n-----\n");
+      fprintf(stderr, "Usage: %s <Server IP> <Echo Port> download <Remote File> <Local File>\n", argv[0]);
+      fprintf(stderr, "Usage: %s <Server IP> <Echo Port> upload <Local File> <Remote File>\n", argv[0]);
+      fprintf(stderr, "Usage: %s <Server IP> <Echo Port> dir <Path>\n", argv[0]);
       exit(1);
    }
 
@@ -54,8 +63,8 @@ int main(int argc, char *argv[])
       UploadFile(sock, lfile, rfile);
    else if(!strcmp(myCommand, "download") && argc == 6)
       DownloadFile(sock, lfile, rfile);
-   else if(!strcmp(myCommand, "dir") && argc == 4)
-      SysCmd(sock, myCommand);
+   else if(!strcmp(myCommand, "dir") && argc == 5)
+      SysCmd(sock, myCommand, myArgs);
    else{
       printf("Available commands: dir, upload, download.\nExamples:\n-----\n");
       printf("./client <Server IP> <Server PORT> dir\n");
@@ -163,6 +172,7 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 {
    //printf("Download func is under construction!\n");
    //exit(1);
+	int percent_recvd;
    long all_bytes_sent, bytes_sent, bytes_read, bytes_left, file_size;
    long all_bytes_recvd, bytes_recvd, bytes_written;
    char buffer[BUFFSIZE];      // Buffer for echo string
@@ -200,13 +210,14 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 		}
 
       all_bytes_recvd += bytes_recvd;
-      printf("STAT: Received %ld B, remaining data = %ld B\n", bytes_recvd, (sizeof(buffer) - all_bytes_recvd));
+      //printf("STAT: Received %ld B, remaining data = %ld B\n", bytes_recvd, (sizeof(buffer) - all_bytes_recvd));
    }
 
 	// Parse received stat msg to get file name and size
 	parseARGS(header, buffer);	
 	//file_name = header[1]; 						// It is not used. Instead "rfile" used.
 	file_size = atoi(header[2]);
+	bytes_left = file_size;
 
 	// Open file stream to write in bin mode
 	aFile = fopen(rfile, "wb");
@@ -227,33 +238,66 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 			DieWithError("failed to write into the file!\n");
 
 		all_bytes_recvd += bytes_recvd;
-		printf("Received %ld B, remaining data = %ld B\n", bytes_recvd, (file_size - all_bytes_recvd));
+		//printf("Received %ld B, remaining data = %ld B\n", bytes_recvd, (file_size - all_bytes_recvd));
+
+      // Calc percentage and display status
+      bytes_left -= bytes_recvd;
+      percent_recvd = ((file_size - bytes_left) * 100) / file_size;
+      printf("Received %d%% (%ld B), remaining = %ld B\n", percent_recvd, bytes_recvd, bytes_left);
 	}	
 
 	// Close file stream
 	fclose(aFile);
 }
 
-
-void SysCmd(int sock, char *myCommand)
+// EXEC commands
+void SysCmd(int sock, char *myCommand, char *myArgs)
 {
-   printf("System commands func is under construction!\n");  
-   exit(1);
-	//long bytes_recvd, bytes_sent;
-	//char buffer[BUFFSIZE];
+	int i = 0;
+	long bytes_recvd, all_bytes_recvd, bytes_sent, all_bytes_sent;
+	char buffer[BUFFSIZE], *header[BUFFSIZE];
 
-	//// Create and send status message for DOWNLOAD
-	//sprintf(buffer, "EXEC:%s:%d\r\n", myCommand, 1);
-	//if((bytes_sent = send(sock, buffer, sizeof(buffer), 0)) < 0)
-	//	DieWithError("send() failed!\n");
+	// Create status message for EXEC command
+	memset(buffer, 0, sizeof(buffer));
+	sprintf(buffer, "EXEC:%s:%s:1\r\n", myCommand, myArgs); // 1 - to delimit args from \r\n
 
-	//bzero(buffer, sizeof(buffer));
+	// Send the status message
+	all_bytes_sent = 0;
+	while(all_bytes_sent != sizeof(buffer)){
+		if((bytes_sent = send(sock, (buffer + all_bytes_sent), (sizeof(buffer) - all_bytes_sent), 0)) < 0)
+			DieWithError("send() failed!\n");
+		
+		all_bytes_sent += bytes_sent;
+	}
 
-	//if((bytes_recvd = recv(sock, buffer, sizeof(buffer), 0)) < 0)
-	//	DieWithError("recv() failed!\n");
+	memset(buffer, 0, sizeof(buffer));
 
-	//printf("Files in . dir:\n%s\n", buffer);
-	//bzero(buffer, sizeof(buffer));
+	// Receive response for EXEC command
+	all_bytes_recvd = 0;
+	while(all_bytes_recvd != sizeof(buffer)){
+		if((bytes_recvd = recv(sock, (buffer + all_bytes_recvd), (sizeof(buffer) - all_bytes_recvd), 0)) < 0)
+			DieWithError("recv() failed!\n");
+	
+		if(bytes_recvd < 0)
+			DieWithError("failed to receive the message from server!\n");		
+		
+		all_bytes_recvd += bytes_recvd;
+	}
+
+	memset(header, 0, BUFFSIZE);
+
+	// Parse buffer to copy members to header array 
+	parseARGS(header, buffer);
+
+	// Print output
+	while(header[i] != NULL){
+		printf("%s\n", header[i]);
+		i++;
+	}
+
+	// Clean both arrays
+	memset(buffer, 0, sizeof(buffer));
+	memset(header, 0, BUFFSIZE);
 }
 
 int parseARGS(char **args, char *line)
