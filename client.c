@@ -100,6 +100,8 @@ void UploadFile(int sock, char *lfile, char *rfile)
    memset(buffer, 0, sizeof(buffer));
    sprintf(buffer, "UPLOAD:%s:%ld\r\n", rfile, file_size);   
 
+	// Send UPLOAD stat msg with file name and size.
+	// Repeat while amount of all sent Bytes equals 4096 Bytes
    all_bytes_sent = 0;
    while(all_bytes_sent != sizeof(buffer)){
       bytes_sent = send(sock, (buffer + all_bytes_sent), (sizeof(buffer) - all_bytes_sent), 0);
@@ -167,12 +169,12 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 	char *file_name, *header[BUFFSIZE];
    FILE *aFile;
 
-	// Create and send status message for DOWNLOAD
+	// Create status message for DOWNLOAD
 	memset(buffer, 0, sizeof(buffer));
 	sprintf(buffer, "DOWNLOAD:%s:%d\r\n", lfile, 1);
 
-	printf("%s\n", buffer);
-   
+	// Send status msg to request file for DOWNLOAD.
+	// Repeat while amount of all received Bytes equals 4096 Bytes.
 	all_bytes_sent = 0;
    while(all_bytes_sent != sizeof(buffer)){
       bytes_sent = send(sock, (buffer + all_bytes_sent), (sizeof(buffer) - all_bytes_sent), 0);
@@ -183,7 +185,8 @@ void DownloadFile(int sock, char *lfile, char *rfile)
       all_bytes_sent += bytes_sent;
    }
 
-	// Receive stat message for DOWNLOAD
+	// Receive stat message to request file size for DOWNLOAD.
+	// Repeat while amount of all received Bytes equals 4096 Bytes.
 	memset(buffer, 0, sizeof(buffer));
 	all_bytes_recvd = 0;
    while(all_bytes_recvd != sizeof(buffer)){
@@ -191,23 +194,28 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 
       if(bytes_recvd < 0)
          DieWithError("recv() STAT msg failed!\n");
-      if(bytes_recvd == 0)
+      if(bytes_recvd == 0){
          printf("Received STAT msg!\n");
+			break;
+		}
 
       all_bytes_recvd += bytes_recvd;
       printf("STAT: Received %ld B, remaining data = %ld B\n", bytes_recvd, (sizeof(buffer) - all_bytes_recvd));
    }
 
-	printf("%s\n", buffer);	
-
+	// Parse received stat msg to get file name and size
 	parseARGS(header, buffer);	
-	file_name = header[1];
+	//file_name = header[1]; 						// It is not used. Instead "rfile" used.
 	file_size = atoi(header[2]);
 
+	// Open file stream to write in bin mode
 	aFile = fopen(rfile, "wb");
 	if(aFile == NULL)
 		DieWithError("failed to open the file!\n");
 	
+	// Receive file via socket, place it in 4096 Byte array 
+	// than write buffer content into file.
+	// Repeat while amount of all received Bytes equals file size. 
 	memset(buffer, 0, sizeof(buffer));
 	all_bytes_recvd = 0;
 	while(all_bytes_recvd != file_size){
@@ -222,6 +230,7 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 		printf("Received %ld B, remaining data = %ld B\n", bytes_recvd, (file_size - all_bytes_recvd));
 	}	
 
+	// Close file stream
 	fclose(aFile);
 }
 
@@ -250,6 +259,7 @@ void SysCmd(int sock, char *myCommand)
 int parseARGS(char **args, char *line)
 {
    int tmp = 0;
+	// Parse line to get args[] elements by ":" delimeter
    args[tmp] = strtok(line, ":");
    while ((args[++tmp] = strtok(NULL, ":")) != NULL);
    return tmp - 1;
