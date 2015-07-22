@@ -20,7 +20,7 @@ void HandleTCPClient(int clntSock)
 	long bytes_recvd, all_bytes_recvd;
 
 	// Get initital client stat msg.
-	// Repeat while amount of all received Bytes equals 4096 Byte.
+	// Repeat until amount of all received Bytes equals 4096 Byte.
 	memset(buffer, 0, sizeof(buffer));
 	all_bytes_recvd = 0;
 	while(all_bytes_recvd != sizeof(buffer)){
@@ -77,7 +77,7 @@ void UploadFile(int clntSock, char *buffer)
 	
    // Receive file via socket, place it in 4096 Byte array 
    // than write buffer content into file.
-   // Repeat while amount of all received Bytes equals file size. 
+   // Repeat until amount of all received Bytes equals file size. 
 	memset(buffer, 0, BUFFSIZE);
 	all_bytes_recvd = 0;
 	while((bytes_recvd = recv(clntSock, buffer, BUFFSIZE, 0)) > 0){
@@ -119,7 +119,7 @@ void DownloadFile(int clntSock, char *sbuffer)
 	sprintf(buffer, "DOWNLOAD:%s:%ld\r\n", file_name, file_size);
 
 	// Send DOWNLOAD stat msg via socket.
-	// Repeat while amount of all sent Bytes equals 4096 Bytes. 
+	// Repeat until amount of all sent Bytes equals 4096 Bytes. 
 	all_bytes_sent = 0;
 	while(all_bytes_sent != BUFFSIZE){
 		bytes_sent = send(clntSock, (buffer + all_bytes_sent), (BUFFSIZE - all_bytes_sent), 0);
@@ -167,56 +167,56 @@ void DownloadFile(int clntSock, char *sbuffer)
 
 void SysCmd(int clntSock, char *buffer)
 {
-char local_buffer[BUFFSIZE], *cmd_name, *cmd_args, *file_name, *header[BUFFSIZE];
-long bytes_sent, all_bytes_sent;
-DIR *dir;
-struct dirent *dp;
-
-printf("%s\n", buffer);
-
-memset(local_buffer, 0, sizeof(local_buffer));
-
-// Parse buffer to get EXEC commands
-parseARGS(header, buffer);
-cmd_name = header[1];
-cmd_args = header[2];
-
-printf("Args: %s\n", cmd_args);
-
-// Execute command "dir"
-if(!strcmp(cmd_name, "dir")){
-
-	// Open directory
-	dir = opendir(cmd_args);
-	if(!dir)
-		DieWithError("opendir() failed!\n");
-	else {
-		// Read the directory and copy all file/dir names to local_buffer array
-		while((dp = readdir(dir)) != NULL) {
-			if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..")){
-       		    // do nothing (straight logic)
-       		} else {
-       		   file_name = dp->d_name; // use it
-					strcat(local_buffer, file_name);
-					strcat(local_buffer, ":");
-       		}	
+	char local_buffer[BUFFSIZE], *cmd_name, *cmd_args, *file_name, *header[BUFFSIZE];
+	long bytes_sent, all_bytes_sent;
+	DIR *dir;
+	struct dirent *dp;
+	
+	printf("%s\n", buffer);
+	
+	memset(local_buffer, 0, sizeof(local_buffer));
+	
+	// Parse buffer to get EXEC commands
+	parseARGS(header, buffer);
+	cmd_name = header[1];
+	cmd_args = header[2];
+	
+	printf("Args: %s\n", cmd_args);
+	
+	// Execute command "dir"
+	if(!strcmp(cmd_name, "dir")){
+	
+		// Open directory
+		dir = opendir(cmd_args);
+		if(!dir)
+			DieWithError("opendir() failed!\n");
+		else {
+			// Read the directory and copy all file/dir names to local_buffer array
+			while((dp = readdir(dir)) != NULL) {
+				if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..")){
+	       		    // do nothing (straight logic)
+	       		} else {
+	       		   file_name = dp->d_name; // use it
+						strcat(local_buffer, file_name);
+						strcat(local_buffer, ":");
+	       		}	
+			}
+	
+			// Server status msg
+			printf("%s\n", local_buffer);
+	
+			// Send info about files/dirs to client.
+			// Repeat while amount of all sent Bytes equals BUFFSIZE. 
+			all_bytes_sent = 0;
+			while(all_bytes_sent != sizeof(local_buffer)){
+				if((bytes_sent = send(clntSock, (local_buffer + all_bytes_sent), (sizeof(local_buffer) - all_bytes_sent), 0)) < 0)	
+					DieWithError("send() failed!\n");
+	
+				all_bytes_sent += bytes_sent;	
+			}
 		}
-
-		// Server status msg
-		printf("%s\n", local_buffer);
-
-		// Send info about files/dirs to client.
-		// Repeat while amount of all byte sent equals BUFFSIZE. 
-		all_bytes_sent = 0;
-		while(all_bytes_sent != sizeof(local_buffer)){
-			if((bytes_sent = send(clntSock, (local_buffer + all_bytes_sent), (sizeof(local_buffer) - all_bytes_sent), 0)) < 0)	
-				DieWithError("send() failed!\n");
-
-			all_bytes_sent += bytes_sent;	
-		}
+	
+		// Close directory
+		closedir(dir);
 	}
-
-	// Close directory
-	closedir(dir);
-}
 }

@@ -12,6 +12,7 @@ void DieWithError(char *errorMessage); // Error handling function
 void UploadFile(int sock, char *lfile, char *rfile);
 void DownloadFile(int sock, char *lfile, char *rfile);
 void SysCmd(int sock, char *myCommand, char *myArgs);
+void ShowExamples(void);
 
 int main(int argc, char *argv[])
 {
@@ -35,12 +36,8 @@ int main(int argc, char *argv[])
          lfile = argv[4];
          rfile = argv[5];
       }
-
    } else {
-      fprintf(stderr, "Available commands: dir, upload, download.\nExamples:\n-----\n");
-      fprintf(stderr, "Usage: %s <Server IP> <Echo Port> download <Remote File> <Local File>\n", argv[0]);
-      fprintf(stderr, "Usage: %s <Server IP> <Echo Port> upload <Local File> <Remote File>\n", argv[0]);
-      fprintf(stderr, "Usage: %s <Server IP> <Echo Port> dir <Path>\n", argv[0]);
+		ShowExamples();
       exit(1);
    }
 
@@ -65,17 +62,22 @@ int main(int argc, char *argv[])
       DownloadFile(sock, lfile, rfile);
    else if(!strcmp(myCommand, "dir") && argc == 5)
       SysCmd(sock, myCommand, myArgs);
-   else{
-      printf("Available commands: dir, upload, download.\nExamples:\n-----\n");
-      printf("./client <Server IP> <Server PORT> dir\n");
-      printf("./client <Server IP> <Server PORT> upload localfile.txt remotefile.txt\n");
-      printf("./client <Server IP> <Server PORT> download remotefile.txt localfile.txt\n-----\n");
-   }
+   else
+		ShowExamples();
+   
 
    // Close the socket
    close(sock);
    exit(0);
 
+}
+
+void ShowExamples(void)
+{
+	printf("Available commands: dir, upload, download.\nExamples:\n-----\n");
+	printf("./client <Server IP> <Server PORT> dir <PATH>\n");
+	printf("./client <Server IP> <Server PORT> upload localfile.txt remotefile.txt\n");
+	printf("./client <Server IP> <Server PORT> download remotefile.txt localfile.txt\n-----\n");
 }
 
 void DieWithError(char *errorMsg)
@@ -110,7 +112,7 @@ void UploadFile(int sock, char *lfile, char *rfile)
    sprintf(buffer, "UPLOAD:%s:%ld\r\n", rfile, file_size);   
 
 	// Send UPLOAD stat msg with file name and size.
-	// Repeat while amount of all sent Bytes equals 4096 Bytes
+	// Repeat until amount of all sent Bytes equals 4096 Bytes
    all_bytes_sent = 0;
    while(all_bytes_sent != sizeof(buffer)){
       bytes_sent = send(sock, (buffer + all_bytes_sent), (sizeof(buffer) - all_bytes_sent), 0);
@@ -184,7 +186,7 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 	sprintf(buffer, "DOWNLOAD:%s:%d\r\n", lfile, 1);
 
 	// Send status msg to request file for DOWNLOAD.
-	// Repeat while amount of all received Bytes equals 4096 Bytes.
+	// Repeat until amount of all received Bytes equals 4096 Bytes.
 	all_bytes_sent = 0;
    while(all_bytes_sent != sizeof(buffer)){
       bytes_sent = send(sock, (buffer + all_bytes_sent), (sizeof(buffer) - all_bytes_sent), 0);
@@ -196,7 +198,7 @@ void DownloadFile(int sock, char *lfile, char *rfile)
    }
 
 	// Receive stat message to request file size for DOWNLOAD.
-	// Repeat while amount of all received Bytes equals 4096 Bytes.
+	// Repeat until amount of all received Bytes equals 4096 Bytes.
 	memset(buffer, 0, sizeof(buffer));
 	all_bytes_recvd = 0;
    while(all_bytes_recvd != sizeof(buffer)){
@@ -226,7 +228,7 @@ void DownloadFile(int sock, char *lfile, char *rfile)
 	
 	// Receive file via socket, place it in 4096 Byte array 
 	// than write buffer content into file.
-	// Repeat while amount of all received Bytes equals file size. 
+	// Repeat until amount of all received Bytes equals file size. 
 	memset(buffer, 0, sizeof(buffer));
 	all_bytes_recvd = 0;
 	while(all_bytes_recvd != file_size){
