@@ -41,6 +41,13 @@ int main(int argc, char *argv[])
       exit(1);
    }
 
+   // Prevent buffer overflow
+   for(i = 0; i < argc; i++)
+      if(strlen(argv[i]) > BUFFSIZE){
+         printf("Too many characters in \"%s\" argument.\nYou are trying to overflow the buffer!\nExit.\n", argv[i]);
+         exit(1);
+      }
+
    // Create a reliable, stream socket using TCP
    if((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
       DieWithError("socket() failed!");

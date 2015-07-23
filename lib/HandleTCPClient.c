@@ -65,31 +65,36 @@ void UploadFile(int clntSock, char *buffer)
 	long bytes_recvd, bytes_written, file_size, all_bytes_recvd;
 	FILE *aFile;
 
+	memset(header, 0, BUFFSIZE);
+
 	// Parse received buffer for file name and file size
 	parseARGS(header, buffer);
 	file_name = header[1];
 	file_size = atoi(header[2]);
 
-	// Open a file stream in wite bin mode
-	aFile = fopen(file_name, "wb");
-	if(aFile == NULL)
-		DieWithError("failed to open the file!\n");
-	
-   // Receive file via socket, place it in 4096 Byte array 
-   // than write buffer content into file.
-   // Repeat until amount of all received Bytes equals file size. 
-	memset(buffer, 0, BUFFSIZE);
-	all_bytes_recvd = 0;
-	while((bytes_recvd = recv(clntSock, buffer, BUFFSIZE, 0)) > 0){
-		all_bytes_recvd += bytes_recvd;
-		printf("Received %ld B, remaining data = %ld B\n", bytes_recvd, (file_size - all_bytes_recvd));
+	if(strlen(file_name) > 0){
 
-		if((bytes_written = fwrite(buffer, sizeof(char), bytes_recvd, aFile)) < 0)
-			DieWithError("fwrite() failed!\n");
+		// Open a file stream in wite bin mode
+		aFile = fopen(file_name, "wb");
+		if(aFile == NULL)
+			DieWithError("failed to open the file!\n");
+		
+   	// Receive file via socket, place it in 4096 Byte array 
+   	// than write buffer content into file.
+   	// Repeat until amount of all received Bytes equals file size. 
+		memset(buffer, 0, BUFFSIZE);
+		all_bytes_recvd = 0;
+		while((bytes_recvd = recv(clntSock, buffer, BUFFSIZE, 0)) > 0){
+			all_bytes_recvd += bytes_recvd;
+			printf("Received %ld B, remaining data = %ld B\n", bytes_recvd, (file_size - all_bytes_recvd));
+
+			if((bytes_written = fwrite(buffer, sizeof(char), bytes_recvd, aFile)) < 0)
+				DieWithError("fwrite() failed!\n");
+		}
+
+		// Close file stream
+		fclose(aFile);	
 	}
-
-	// Close file stream
-	fclose(aFile);	
 }
 
 void DownloadFile(int clntSock, char *sbuffer)
@@ -99,70 +104,74 @@ void DownloadFile(int clntSock, char *sbuffer)
 	char buffer[BUFFSIZE], *file_name, *header[BUFFSIZE];
 	FILE *aFile;
 
+	memset(header, 0, BUFFSIZE);
+
 	// Parse buffer for file name 
 	parseARGS(header, sbuffer);
 	file_name = header[1];
 
-	// Open file stream in read bin mode
-	aFile = fopen(file_name, "rb");
-	if(aFile == NULL)
-		DieWithError("failed to open the file!\n");
+	if(strlen(file_name) > 0){
 
-	// Shift file stream indicatore to get file size
-	fseek(aFile, 0, SEEK_END);
-	file_size = ftell(aFile);
-	rewind(aFile);
+		// Open file stream in read bin mode
+		aFile = fopen(file_name, "rb");
+		if(aFile == NULL)
+			DieWithError("failed to open the file!\n");
 
-	bytes_left = file_size;
-	// Prepare DOWNLOAD stat msg with file name and size 	
-	memset(buffer, 0, BUFFSIZE);
-	sprintf(buffer, "DOWNLOAD:%s:%ld\r\n", file_name, file_size);
+		// Shift file stream indicatore to get file size
+		fseek(aFile, 0, SEEK_END);
+		file_size = ftell(aFile);
+		rewind(aFile);
 
-	// Send DOWNLOAD stat msg via socket.
-	// Repeat until amount of all sent Bytes equals 4096 Bytes. 
-	all_bytes_sent = 0;
-	while(all_bytes_sent != BUFFSIZE){
-		bytes_sent = send(clntSock, (buffer + all_bytes_sent), (BUFFSIZE - all_bytes_sent), 0);
-		if(bytes_sent < 0)
-			DieWithError("send STAT msg failed!\n");		
-
-		all_bytes_sent += bytes_sent;
-		printf("STAT: Sent %ld B, remaining data = %ld B\n", bytes_sent, (BUFFSIZE - all_bytes_sent));
-	}
-
-	// Loop until all Bytes of the file will be send
-	while(1){
+		bytes_left = file_size;
+		// Prepare DOWNLOAD stat msg with file name and size 	
 		memset(buffer, 0, BUFFSIZE);
+		sprintf(buffer, "DOWNLOAD:%s:%ld\r\n", file_name, file_size);
 
-		// Read file into buffer
-		if((bytes_read = fread(buffer, sizeof(char), BUFFSIZE, aFile)) < 0)
-			DieWithError("failed to read the file!\n");	
+		// Send DOWNLOAD stat msg via socket.
+		// Repeat until amount of all sent Bytes equals 4096 Bytes. 
+		all_bytes_sent = 0;
+		while(all_bytes_sent != BUFFSIZE){
+			bytes_sent = send(clntSock, (buffer + all_bytes_sent), (BUFFSIZE - all_bytes_sent), 0);
+			if(bytes_sent < 0)
+				DieWithError("send STAT msg failed!\n");		
 
-		// Send file over socket
-		if(bytes_read > 0){
-			if((bytes_sent = send(clntSock, buffer, bytes_read, 0)) < 0)
-				DieWithError("fialed to send the file!\n");
-
-			// Calc percentage and display status
-			bytes_left -= bytes_sent;
-			percent_sent = ((file_size - bytes_left) * 100) / file_size;
-			printf("Sent %d%% (%ld B), remaining = %ld B\n", percent_sent, bytes_sent, bytes_left);
+			all_bytes_sent += bytes_sent;
+			printf("STAT: Sent %ld B, remaining data = %ld B\n", bytes_sent, (BUFFSIZE - all_bytes_sent));
 		}
 
-		// Check the end of the file
-		// if it is End - break.
-		if(bytes_read < BUFFSIZE){
-			if(feof(aFile))
-				printf("End of file.\n");
-			if(ferror(aFile))
-				printf("Error reading!\n");
-			break;
+		// Loop until all Bytes of the file will be send
+		while(1){
+			memset(buffer, 0, BUFFSIZE);
+
+			// Read file into buffer
+			if((bytes_read = fread(buffer, sizeof(char), BUFFSIZE, aFile)) < 0)
+				DieWithError("failed to read the file!\n");	
+
+			// Send file over socket
+			if(bytes_read > 0){
+				if((bytes_sent = send(clntSock, buffer, bytes_read, 0)) < 0)
+					DieWithError("fialed to send the file!\n");
+
+				// Calc percentage and display status
+				bytes_left -= bytes_sent;
+				percent_sent = ((file_size - bytes_left) * 100) / file_size;
+				printf("Sent %d%% (%ld B), remaining = %ld B\n", percent_sent, bytes_sent, bytes_left);
+			}
+
+			// Check the end of the file
+			// if it is End - break.
+			if(bytes_read < BUFFSIZE){
+				if(feof(aFile))
+					printf("End of file.\n");
+				if(ferror(aFile))
+					printf("Error reading!\n");
+				break;
+			}
 		}
+		
+		// Close file stream
+		fclose(aFile);	
 	}
-	
-	// Close file stream
-	fclose(aFile);	
-
 }
 
 void SysCmd(int clntSock, char *buffer)
@@ -175,6 +184,7 @@ void SysCmd(int clntSock, char *buffer)
 	printf("%s\n", buffer);
 	
 	memset(local_buffer, 0, sizeof(local_buffer));
+	memset(header, 0, BUFFSIZE);
 	
 	// Parse buffer to get EXEC commands
 	parseARGS(header, buffer);
@@ -183,40 +193,43 @@ void SysCmd(int clntSock, char *buffer)
 	
 	printf("Args: %s\n", cmd_args);
 	
-	// Execute command "dir"
-	if(!strcmp(cmd_name, "dir")){
-	
-		// Open directory
-		dir = opendir(cmd_args);
-		if(!dir)
-			DieWithError("opendir() failed!\n");
-		else {
-			// Read the directory and copy all file/dir names to local_buffer array
-			while((dp = readdir(dir)) != NULL) {
-				if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..")){
-	       		    // do nothing (straight logic)
-	       		} else {
-	       		   file_name = dp->d_name; // use it
-						strcat(local_buffer, file_name);
-						strcat(local_buffer, ":");
-	       		}	
+	if(strlen(cmd_name) > 0 && strlen(cmd_args) > 0){
+
+		// Execute command "dir"
+		if(!strcmp(cmd_name, "dir")){
+		
+			// Open directory
+			dir = opendir(cmd_args);
+			if(!dir)
+				DieWithError("opendir() failed!\n");
+			else {
+				// Read the directory and copy all file/dir names to local_buffer array
+				while((dp = readdir(dir)) != NULL) {
+					if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..")){
+		       		    // do nothing (straight logic)
+		       		} else {
+		       		   file_name = dp->d_name; // use it
+							strcat(local_buffer, file_name);
+							strcat(local_buffer, ":");
+		       		}	
+				}
+		
+				// Server status msg
+				printf("%s\n", local_buffer);
+		
+				// Send info about files/dirs to client.
+				// Repeat while amount of all sent Bytes equals BUFFSIZE. 
+				all_bytes_sent = 0;
+				while(all_bytes_sent != sizeof(local_buffer)){
+					if((bytes_sent = send(clntSock, (local_buffer + all_bytes_sent), (sizeof(local_buffer) - all_bytes_sent), 0)) < 0)	
+						DieWithError("send() failed!\n");
+		
+					all_bytes_sent += bytes_sent;	
+				}
 			}
-	
-			// Server status msg
-			printf("%s\n", local_buffer);
-	
-			// Send info about files/dirs to client.
-			// Repeat while amount of all sent Bytes equals BUFFSIZE. 
-			all_bytes_sent = 0;
-			while(all_bytes_sent != sizeof(local_buffer)){
-				if((bytes_sent = send(clntSock, (local_buffer + all_bytes_sent), (sizeof(local_buffer) - all_bytes_sent), 0)) < 0)	
-					DieWithError("send() failed!\n");
-	
-				all_bytes_sent += bytes_sent;	
-			}
+		
+			// Close directory
+			closedir(dir);
 		}
-	
-		// Close directory
-		closedir(dir);
 	}
 }
