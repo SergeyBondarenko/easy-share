@@ -90,6 +90,11 @@ void UploadFile(int clntSock, char *buffer)
 
 			if((bytes_written = fwrite(buffer, sizeof(char), bytes_recvd, aFile)) < 0)
 				DieWithError("fwrite() failed!\n");
+
+			if(all_bytes_recvd == file_size){
+				printf("Finished UPLOAD!\n");
+				break;
+			}
 		}
 
 		// Close file stream

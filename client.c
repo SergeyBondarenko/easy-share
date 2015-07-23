@@ -163,7 +163,7 @@ void UploadFile(int sock, char *lfile, char *rfile)
       // and if it is the end - break loop
       if(bytes_read < chunk_size){
          if(feof(aFile))
-            printf("End of file.\n");
+            printf("Finished UPLOAD.\n");
          if(ferror(aFile))
             printf("Error reading!\n");
          break;
@@ -254,6 +254,9 @@ void DownloadFile(int sock, char *lfile, char *rfile)
       percent_recvd = ((file_size - bytes_left) * 100) / file_size;
       printf("Received %d%% (%ld B), remaining = %ld B\n", percent_recvd, bytes_recvd, bytes_left);
 	}	
+
+	if(all_bytes_recvd == file_size)
+		printf("Finished DOWNLOAD.\n");
 
 	// Close file stream
 	fclose(aFile);
